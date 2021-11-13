@@ -22,7 +22,7 @@ public class LectorPDF {
     private int Startxref=0;
     private int root=0;
     private int catalogo=0;
-
+    private float x2=0, y2=0;
     LectorPDF(File ruta)
     {
     this.ruta=ruta;
@@ -36,8 +36,6 @@ public class LectorPDF {
         try {
             RandomAccessFile archivo = new RandomAccessFile(ruta,"r");
             byte ref[] = new byte[9];
-          
-            
             //regresamos 300 bytes para buscar la posicion de la tabla de las referencias
             archivo.seek(archivo.length() - 350);
             while((cadena = archivo.readLine()) != null){
@@ -45,8 +43,7 @@ public class LectorPDF {
              if("startxref".equals(cadena))
              {               
                  cadena = archivo.readLine();
-               //  System.out.println( cadena);
-                 System.out.println("-------------------");
+               // System.out.println( cadena);
                  Startxref = Integer.parseInt(cadena);
                  //System.out.println("Referencia: " + referencia);
                  break;
@@ -55,7 +52,6 @@ public class LectorPDF {
              {
                   
                  info = archivo.readLine();
-                 //  System.out.println( info);
                  if("<<".equals(info))
                  {
                      info += archivo.readLine();
@@ -80,6 +76,7 @@ public class LectorPDF {
                  {
                      String[] auxPartir = partir[j].split(" ");
                      auxRef = Integer.parseInt(auxPartir[1]);
+                     buscador = "";
                  }
                  else if ("Root".equals(buscador)) {
                       String[] auxPartir = partir[j].split(" ");
@@ -89,9 +86,7 @@ public class LectorPDF {
                  else{
                      buscador="";
                  }
-             }
-              
-               
+             }           
             archivo.seek(Startxref);
             cadena = archivo.readLine(); // lee xref
             cadena = archivo.readLine(); // lee el valor a donde tenemos que ir para leer los metadatos
@@ -103,13 +98,10 @@ public class LectorPDF {
                    {
                        dato += cadena.charAt(i);
                    }
-            
-            
             aux = Integer.parseInt(dato); // convertir el valor de los metadatos a entero
             }
             catch(NumberFormatException e)
             {
-                System.out.println("No se puede convertir");
                 aux = 0;
             }
             if(aux != auxRef + 1)
@@ -120,12 +112,7 @@ public class LectorPDF {
                     nombres = "No se encontro ninguna referencia de los metadatos";
                 }
                 aux = auxRef+1;
-            }
-            
-            
-            //System.out.println("Numero: " + aux);
-           
-            
+            }       
             byte meta[] = new byte[10];
             int contador = 0;
             archivo.seek(Startxref);
@@ -140,17 +127,16 @@ public class LectorPDF {
                    //System.out.println("Byte de referencia: " + refMetadatos);
                    archivo.seek(refMetadatos);
                    //System.out.println("leyendo metadatos");
-                   
-                   for(int i = 0; i< 5; i++)
+                   for(int i = 0; i<10; i++)
                    {
                        cadena = archivo.readLine();
                        if(cadena.equals("endobj"))
                        {
-                           i =5;
+                           break;
                        }
                        else
                        {
-                       nombres += cadena + '\n';
+                       nombres += cadena;
                        }
                    }
                    break;
@@ -165,6 +151,8 @@ public class LectorPDF {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }catch (NumberFormatException e) {
+            
         }
         return nombres;
     }
@@ -188,26 +176,26 @@ public class LectorPDF {
   
     return version; 
     }
-    public String Tamanio()
+    public int Tamanio()
     {
-        String tamanio="";
+        int tamanio=0;
     
         try {
             RandomAccessFile archivo = new RandomAccessFile(ruta,"r");
          
-        tamanio="Tamaño del archivo: " + archivo.getChannel().size() + " Bytes";
+        tamanio = (int) archivo.getChannel().size();
        archivo.close();
-            //regresamos 300 bytes para buscar la posicion de la tabla de las referencias
-          
-          
             }
           catch (FileNotFoundException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }catch (NumberFormatException e) {
+            
         }
         return tamanio;
     }
+    
     public int Numpaginas()
     {
 int paginas=0;
@@ -215,12 +203,12 @@ String cadena="";
 String info="";
       
 int referencia=0;
+  
      try {
             RandomAccessFile archivo = new RandomAccessFile(ruta,"r");
           byte meta[] = new byte[10];
             int contador = 0;
             archivo.seek(Startxref);
-           
             
             while((cadena = archivo.readLine()) != null){
             
@@ -231,29 +219,36 @@ int referencia=0;
                    //System.out.println("Byte de referencia: " + referencia);
                    archivo.seek(referencia);
                    info = archivo.readLine();
-                        info = archivo.readLine();
+                   info = archivo.readLine();
+                   info = archivo.readLine();
                  if("<<".equals(info))
                  {
                      info += archivo.readLine();
                      info += archivo.readLine();
                      info += archivo.readLine();
-                     
                  }
-            
+                 else{
+                   archivo.seek(referencia);
+                   info = archivo.readLine();
+                   info = archivo.readLine();
+                 }
+                 //System.out.println(info);
                    String[] partir = info.split("/");
                  
              int a = info.split("/").length;
        
-            
+             String buscador ="";
              for(int j=1; j<a; j++)
              {
-                
-                
-                 if("Catalog".equals(partir[j]))
+                 buscador ="";
+                for (int k = 0; k < 4; k++) {
+                     buscador+=partir[j].charAt(k);
+                 }
+             
+                 if("Page".equals(buscador))
                  {
-                     String[] auxPartir = partir[j+1].split(" ");
+                     String[] auxPartir = partir[j].split(" ");
                      catalogo = Integer.parseInt(auxPartir[1]);
-                    
                        break;
                  } 
               
@@ -274,42 +269,47 @@ int referencia=0;
                {
                    archivo.read(meta);
                    referencia = Integer.parseInt(new String(meta));
-                 // System.out.println("Byte de referencia: " + referencia);
+                   //System.out.println("Byte de referencia: " + referencia);
                    archivo.seek(referencia);
                    info = archivo.readLine();
-                    info = archivo.readLine();
+                   info = archivo.readLine();
+                   info = archivo.readLine();
                  if("<<".equals(info))
                  {
                      info += archivo.readLine();
                      info += archivo.readLine();
                      info += archivo.readLine();
                  }
-               //  System.out.println(info);
+                 else{
+                   archivo.seek(referencia);
+                   info = archivo.readLine();
+                   info = archivo.readLine();
+                 }
+                  //System.out.println(info);
                    String[] partir = info.split("/");
              int a = info.split("/").length;
            
-            
+             String buscador = "";
              for(int j=1; j<a; j++)
              {
-                
-                 if("Pages".equals(partir[j]))
+                 buscador ="";
+                 for(int k=0; k<4; k++)
                  {
-                     String[] auxPartir = partir[j+1].split(" ");
+                     buscador+= partir[j].charAt(k);
+                 }
+                
+                 if("Coun".equals(buscador))
+                 {
+                     String[] auxPartir = partir[j].split(" ");
                      paginas = Integer.parseInt(auxPartir[1]);
-                 } 
+                 }
                  
              }
                    break;
                }
              contador++;
-            }
-            
-            
+            }        
             archivo.close();
-      
-            //regresamos 300 bytes para buscar la posicion de la tabla de las referencias
-          
-          
             }
           catch (FileNotFoundException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
@@ -319,12 +319,10 @@ int referencia=0;
 
 return paginas;
     }
-    public String TamanioPag()
+    public void TamanioPag()
     {
-        int x=0;
-         int y=0;
-         float x2=0;
-         float y2=0;
+         float x=0;
+         float y=0;
          String Tamanio="";
         String cadena="";
         String info="";
@@ -332,6 +330,7 @@ return paginas;
 int referencia=0;
  String buscador="";
      double pixel=0.35277777778;
+     boolean espacio= false;
      try {
             RandomAccessFile archivo = new RandomAccessFile(ruta,"r");
           byte meta[] = new byte[10];
@@ -346,15 +345,21 @@ int referencia=0;
                    //System.out.println("Byte de referencia: " + referencia);
                    archivo.seek(referencia);
                    info = archivo.readLine();
-                        info = archivo.readLine();
+                   info = archivo.readLine();
+                   info = archivo.readLine();
                  if("<<".equals(info))
                  {
                      info += archivo.readLine();
                      info += archivo.readLine();
                      info += archivo.readLine();
-                     
+                     espacio = true;
                  }
-            
+                 else{
+                   archivo.seek(referencia);
+                   info = archivo.readLine();
+                   info = archivo.readLine();
+                 }
+                 
                    String[] partir = info.split("/");
                  
              int a = info.split("/").length;
@@ -362,7 +367,7 @@ int referencia=0;
            
              for(int j=1; j<a; j++)
              {
-                 
+                 buscador="";
                  for (int k = 0; k < 4; k++) {
                      buscador+=partir[j].charAt(k);
                  }
@@ -370,22 +375,23 @@ int referencia=0;
                  if("Kids".equals(buscador))
                  {
                      String[] auxPartir = partir[j].split(" ");
+                     if(espacio)
+                     {
+                         auxRef = Integer.parseInt(auxPartir[2]);
+                     }
+                     else{
                      auxRef = Integer.parseInt(auxPartir[1]);
-                    
+                     }
                        break;
-                 } 
-                 else
-                 {
-                     buscador="";
-                 }
-                     
+                 }         
              }
                    break;
                    
                }
              contador++;
             }
-        // System.out.println("Referencia de hijos: " +auxRef);
+        //System.out.println("Referencia de hijos: " +auxRef);
+        
             archivo.seek(Startxref);
             contador=0;
             buscador="";
@@ -400,14 +406,20 @@ int referencia=0;
                   //System.out.println("Byte de referencia: " + referencia);
                    archivo.seek(referencia);
                    info = archivo.readLine();
-                    info = archivo.readLine();
+                   info = archivo.readLine();
+                   info = archivo.readLine();
                  if("<<".equals(info))
                  {
                      info += archivo.readLine();
                      info += archivo.readLine();
                      info += archivo.readLine();
                  }
-               // System.out.println(info);
+                 else{
+                   archivo.seek(referencia);
+                   info = archivo.readLine();
+                   info = archivo.readLine();
+                 }
+                //System.out.println(info);
                    String[] partir = info.split("/");
              int a = info.split("/").length;
              for(int j=1; j<a; j++)
@@ -418,15 +430,22 @@ int referencia=0;
                 
                  if("M".equals(buscador))
                  {
-                   
-                     String[] auxPartir = partir[j].split(" ");
-                       
-                     x = Integer.parseInt(auxPartir[3]);
                      String auxY="";
+                     String[] auxPartir = partir[j].split(" ");
+                     if(espacio)
+                     {
+                         x = (float) Double.parseDouble(auxPartir[4]);
+                     for (int i = 0; i < auxPartir[5].length()-1; i++) {
+                         auxY+=auxPartir[5].charAt(i);
+                     }
+                     }
+                     else{
+                     x = (float) Double.parseDouble(auxPartir[3]);
                      for (int i = 0; i < auxPartir[4].length()-1; i++) {
                          auxY+=auxPartir[4].charAt(i);
                      }
-                    y=Integer.parseInt(auxY);
+                     }
+                    y= (float) Double.parseDouble(auxY);
                  } 
                  else {
                  buscador="";
@@ -439,20 +458,16 @@ int referencia=0;
             }
             x2=(float) (x*pixel);
             y2=(float) (y*pixel);
-            Tamanio=String.valueOf(x2);
-            Tamanio+=" X "+ String.valueOf(y2);
             archivo.close();
-      
-            //regresamos 300 bytes para buscar la posicion de la tabla de las referencias
-          
-          
             }
           catch (FileNotFoundException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         }
-     return Tamanio;
+          catch (NumberFormatException e) {
+            
+        }
     }
     //Metodo de Listas Imagenes y Fuentes
     //Metadatos
@@ -468,7 +483,7 @@ int referencia=0;
         String buscador="";
         int hijos[]= new int [2];
         int hojas = 0;
-        
+        boolean espacio = false;
         try {            
             RandomAccessFile archivo = new RandomAccessFile(ruta,"r");
             byte meta[] = new byte[10];
@@ -483,15 +498,22 @@ int referencia=0;
                    //System.out.println("Byte de referencia: " + referencia);
                    archivo.seek(referencia);
                    info = archivo.readLine();
-                        info = archivo.readLine();
+                   info = archivo.readLine();
+                   info = archivo.readLine();
                  if("<<".equals(info))
                  {
                      info += archivo.readLine();
                      info += archivo.readLine();
                      info += archivo.readLine();
-                     
+                     espacio = true;
                  }
-            
+                 else{
+                   archivo.seek(referencia);
+                   info = archivo.readLine();
+                   info = archivo.readLine();
+                 }
+                // System.out.println(info);
+                 
                    String[] partir = info.split("/");
                  
              int a = info.split("/").length;
@@ -507,6 +529,18 @@ int referencia=0;
                  if("Kids".equals(buscador))
                  {
                      String[] auxPartir = partir[j].split(" ");
+                     if(espacio)
+                     {
+                     hijos = new int [(partir[j].split(" ").length / 3)-1];                     
+                     hojas = (partir[j].split(" ").length / 3) - 1;
+                    for (int k = 2; k < partir[j].split(" ").length - 2; k = k+3) {
+                       
+                     hijos[contaux]=Integer.parseInt(auxPartir[k]);
+                     
+                      contaux++;
+                      }
+                     }
+                     else{
                      hijos = new int [partir[j].split(" ").length / 3];                     
                      hojas = partir[j].split(" ").length / 3;
                     for (int k = 1; k < partir[j].split(" ").length - 2; k = k+3) {
@@ -514,7 +548,8 @@ int referencia=0;
                      hijos[contaux]=Integer.parseInt(auxPartir[k]);
                      
                       contaux++;
-                 }
+                      }
+                     }
 
                        break;
                  } 
@@ -537,20 +572,31 @@ int referencia=0;
                 contador=0;
                 
                 while((cadena = archivo.readLine()) != null){
-                  
+                     info = "";
                     if(contador==hijos[c]+1){
                         archivo.read(meta);
                         referencia = Integer.parseInt(new String(meta));
-                        archivo.seek(referencia);
-                        info = archivo.readLine();
-                        info = archivo.readLine();
-                         if("<<".equals(info))
-                            {
-                          info += archivo.readLine();
+                        if(espacio)
+                        {
+                         archivo.seek(referencia);
                          info += archivo.readLine();
-                        info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         String aux = info;
+                         
+                         info = getResources(aux);
                         }
-                        // System.out.println(info);
+                         else{
+                         archivo.seek(referencia);
+                         info = archivo.readLine();
+                         info = archivo.readLine();
+                        }
                         String[] partir = info.split("/");
                         int a = info.split("/").length;
                         
@@ -559,9 +605,14 @@ int referencia=0;
                                 buscador+=partir[j].charAt(k);
                             }
                 
-                            if("X".equals(buscador)){                               
-                            do{
+                            if("X".equals(buscador)){
+                               
+                            do{                              
                                 j++;
+                                if(j == a)
+                                {
+                                    break;
+                                }
                                 buscador = "";
                                 for (int k = 0; k < 5; k++) {
                                     buscador+=partir[j].charAt(k);
@@ -576,24 +627,20 @@ int referencia=0;
                             buscador="";
                         }
                  
-                        }    
-                        
-                
+                        }                  
                 break;
                     }
                     contador++;
                 }
-            }
-            
-            
+            }          
             archivo.close();
-      
-            //regresamos 300 bytes para buscar la posicion de la tabla de las referencias
             }
           catch (FileNotFoundException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }catch (NumberFormatException e) {
+            
         }
      return Tamanio;
         
@@ -613,6 +660,7 @@ int referencia=0;
         int hojas = 0;
         String NombreF = "";
         int hojas2 = 0;
+        boolean espacio = false;
         try {            
             RandomAccessFile archivo = new RandomAccessFile(ruta,"r");
             byte meta[] = new byte[10];
@@ -628,14 +676,20 @@ int referencia=0;
                    archivo.seek(referencia);
                    info = archivo.readLine();
                    info = archivo.readLine();
+                   info = archivo.readLine();
                  if("<<".equals(info))
                  {
                      info += archivo.readLine();
                      info += archivo.readLine();
                      info += archivo.readLine();
-                     
+                     espacio = true;
                  }
-            
+                 else{
+                   archivo.seek(referencia);
+                   info = archivo.readLine();
+                   info = archivo.readLine();
+                 }
+                //System.out.println(info);
                    String[] partir = info.split("/");
                  
              int a = info.split("/").length;
@@ -651,6 +705,18 @@ int referencia=0;
                  if("Kids".equals(buscador))
                  {
                      String[] auxPartir = partir[j].split(" ");
+                     if(espacio)
+                     {
+                     hijos = new int [(partir[j].split(" ").length / 3)-1];                     
+                     hojas = (partir[j].split(" ").length / 3) - 1;
+                    for (int k = 2; k < partir[j].split(" ").length - 2; k = k+3) {
+                       
+                     hijos[contaux]=Integer.parseInt(auxPartir[k]);
+                     
+                      contaux++;
+                      }
+                     }
+                     else{
                      hijos = new int [partir[j].split(" ").length / 3];                     
                      hojas = partir[j].split(" ").length / 3;
                     for (int k = 1; k < partir[j].split(" ").length - 2; k = k+3) {
@@ -658,7 +724,8 @@ int referencia=0;
                      hijos[contaux]=Integer.parseInt(auxPartir[k]);
                      
                       contaux++;
-                 }
+                      }
+                     }
 
                        break;
                  } 
@@ -673,44 +740,59 @@ int referencia=0;
                }
              contador++;
             }
+        //System.out.println("Referencia de hijos: " +auxRef);
+            
 
             for(int c=0; c<hojas; c++){
                 archivo.seek(Startxref);
                 contador=0;
-                
+                info ="";
                 while((cadena = archivo.readLine()) != null){
                   
                     if(contador==hijos[c]+1){
                         archivo.read(meta);
                         referencia = Integer.parseInt(new String(meta));
-                        archivo.seek(referencia);
-                        info = archivo.readLine();
-                        info = archivo.readLine();
-                         if("<<".equals(info))
-                            {
-                          info += archivo.readLine();
+                        if(espacio)
+                        {
+                         archivo.seek(referencia);
                          info += archivo.readLine();
-                        info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         info += archivo.readLine();
+                         String aux = info;
+                         info = getResources(aux);
+                        }
+                         else{
+                         archivo.seek(referencia);
+                         info = archivo.readLine();
+                         info = archivo.readLine();
                         }
                         
-                        // System.out.println(info);
+                        //System.out.println(info);
                         String[] partir = info.split("/");
                         int a = info.split("/").length;
                         
                         for(int j=1; j<a; j++){
-                            
+                            buscador="";
                             for (int k = 0; k < 1; k++) {
                                 buscador+=partir[j].charAt(k);
                             }
-                
                             if("F".equals(buscador)){                               
                             do{
                                 j++;
+                                if(j==a)
+                                {
+                                    break;
+                                }
                                 buscador = "";
                                 for (int k = 0; k < 1; k++) {
                                     buscador+=partir[j].charAt(k);
                                 }
-                           
                                 if("F".equals(buscador)){
                                     String[] auxPartir = partir[j].split(" ");
                                     valores += Integer.parseInt(auxPartir[1]) + "/";
@@ -736,30 +818,51 @@ int referencia=0;
                 }
             }
       
-             
+             //System.out.println(valores);
              String[] unificar = valores.split("/");
              int contvalores = valores.split("/").length;
              //algoritmo
+             String[] unAux = new String[contvalores];
+              boolean entrada=true;
+              for (int i = 0; i < contvalores; i++) {
+                unAux[i]="";
+            }
              valores = "";
-             for(int c = 0; c < contvalores-1; c++){
-                   valores += unificar[c]+"/";
-                 if(unificar[c].equals(unificar[c+1]))
-                 {
-                   c++;
+             for(int c = 0; c <contvalores; c++){
+                 for (int i = 0; i <= c; i++) {
+                         
+                         if (entrada) {
+                         unAux[i]=unificar[c];
+                         valores += unificar[c]+"/";
+                         entrada=false;
+                         }
+                         else if(!unificar[c].equals(unAux[i])&&unAux[i]=="")
+                         {
+                          unAux[i]=unificar[c];
+                          valores += unificar[c]+"/";
+                            break;
+                         }
+                         else if (unificar[c].equals(unAux[i])) {
+                            break;
+                         }
                  }
-                 
-                 
+               
              }
              String[] partir3 = valores.split("/");
+             //System.out.println(valores);
              hojas2 = valores.split("/").length;
              fuentes = new int [hojas2];
-             
+             try{
              for(int c = 0; c < hojas2; c++){
                    
              fuentes[c] = Integer.parseInt(partir3[c]);
                  
              }
-             
+             }
+            catch(NumberFormatException e)
+            {
+                //System.out.println("No se puede convertir");
+            }
             /////forx
              for(int c=0; c<hojas2; c++){
                 archivo.seek(Startxref);
@@ -773,13 +876,20 @@ int referencia=0;
                         archivo.seek(referencia);
                         info = archivo.readLine();
                         info = archivo.readLine();
-                         if("<<".equals(info))
-                            {
+                        info = archivo.readLine();
+                        if("<<".equals(info))
+                        {
                           info += archivo.readLine();
-                         info += archivo.readLine();
-                        info += archivo.readLine();
+                          info += archivo.readLine();
+                          info += archivo.readLine();
+                           espacio = true;
                         }
-                        // System.out.println(info);
+                        else{
+                          archivo.seek(referencia);
+                          info = archivo.readLine();
+                          info = archivo.readLine();
+                        }
+                        //System.out.println(info);
                         String[] partir = info.split("/");
                         int a = info.split("/").length;
                         
@@ -827,7 +937,65 @@ int referencia=0;
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
         } catch (IOException ex) {
             Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }catch (NumberFormatException e) {
+            
         }
      return NombreF; 
     }
+    
+    private String getResources(String info)
+    {
+        int referencia = 0;
+        try {
+        RandomAccessFile archivo = new RandomAccessFile(ruta,"r");
+        String buscador="";
+        String cadena = "";
+        int aux =0;
+        String[] partir = info.split("/");
+        int a = info.split("/").length;                
+        for(int j=1; j<a; j++){
+            buscador="";
+            for (int k = 0; k < 4; k++) {
+                buscador+=partir[j].charAt(k);
+            }   
+            if("Reso".equals(buscador)){                               
+               String[] auxPartir = partir[j].split(" ");
+               aux = Integer.parseInt(auxPartir[1]);
+            }                
+        }
+        archivo.seek(this.Startxref);
+        byte meta[] = new byte[10];
+        int contador = 0;
+        info ="";
+        while((cadena = archivo.readLine()) != null){
+            if(contador == aux +1)
+            {
+                archivo.read(meta);                        
+                referencia = Integer.parseInt(new String(meta));
+                archivo.seek(referencia);
+                while(!"endobj".equals(cadena = archivo.readLine())){
+                    info+=cadena;
+                }
+            }
+            contador++;
+        }
+        
+            archivo.close();          
+        }
+          catch (FileNotFoundException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        } catch (IOException ex) {
+            Logger.getLogger(Main.class.getName()).log(Level.SEVERE, null, ex);
+        }
+        return info;
+    }
+    public float getTamanioX()
+    {
+        return this.x2;
+    }
+    public float getTamanioY()
+    {
+        return this.y2;
+    }
+    
 }
